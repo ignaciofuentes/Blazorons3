@@ -1,0 +1,139 @@
+﻿@page "/"
+@using System.Text.Json
+@using System.Text.Json.Serialization;
+@inject HttpClient Http;
+@using System.Net.WebSockets;
+@using System.Text;
+
+<PageTitle>Index</PageTitle>
+<h1>Hello, world!</h1>
+Welcome to your new app.
+<SurveyPrompt Title="How is Blazor working for you?" />
+<button class="btn btn-primary" @onclick="Clicked">Get Branches</button>
+<p role="status"> @currentMessage</p>
+@if (show)
+{
+    <div>
+        <h1>Call web API from a Blazor Server Razor component</h1>
+
+        @if (getBranchesError)
+        {
+            <p>Unable to get branches from GitHub. Please try again later.</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var branch in branches)
+                {
+                    <li>@branch.Name</li>
+                }
+            </ul>
+        }
+    </div>
+}
+
+<h3>State: @socket.State</h3>
+
+@if (socket.State == WebSocketState.Open)
+{
+    <form @onsubmit="@SendMessageAsync">
+        Message: <input @bind="@message" />
+        <button type="submit">Send</button>
+    </form>
+
+    <pre>@log</pre>
+}
+
+@code {
+    public class GitHubBranch
+    {
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
+    }
+
+    private IEnumerable<GitHubBranch> branches = Array.Empty<GitHubBranch>();
+    private bool getBranchesError;
+    private bool show;
+    private string currentMessage = "";
+
+
+    protected async Task Clicked()
+
+    {
+        show = false;
+        currentMessage = "Loading";
+        await fetchGitHubBranches();
+        show = true;
+        currentMessage = "Loaded";
+    }
+
+    private async Task fetchGitHubBranches()
+    {
+
+        var request = new HttpRequestMessage(HttpMethod.Get,
+    "https://api.github.com/repos/dotnet/AspNetCore.Docs/branches");
+        request.Headers.Add("Accept", "application/vnd.github.v3+json");
+        request.Headers.Add("User-Agent", "HttpClientFactory-Sample");
+        var response = await Http.SendAsync(request);
+        if (response.IsSuccessStatusCode)
+        {
+            using var responseStream = await response.Content.ReadAsStreamAsync();
+            var data = await JsonSerializer.DeserializeAsync<IEnumerable<GitHubBranch>>(responseStream);
+            if (data is not null)
+            {
+                branches = data;
+            }
+        }
+        else
+        {
+            getBranchesError = true;
+        }
+    }
+
+
+    CancellationTokenSource disposalTokenSource = new CancellationTokenSource();
+    ClientWebSocket socket = new ClientWebSocket();
+    string message = "Hello, websocket!";
+    string log = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("Some content logged in Blazor App output window");
+
+        await socket.ConnectAsync(new Uri("wss://6cfwif7fa2.execute-api.us-east-1.amazonaws.com/production"), disposalTokenSource.Token);
+        _ = Receive();
+
+    }
+
+    async Task SendMessageAsync()
+    {
+        Console.WriteLine("SENDING");
+        log += $"Sending: {message}\n";
+        var dataToSend = new ArraySegment<byte>(Encoding.UTF8.GetBytes(message));
+        await socket.SendAsync(dataToSend, WebSocketMessageType.Text, true, disposalTokenSource.Token);
+    }
+
+    async Task Receive()
+    {
+        Console.WriteLine("Received Loop?!!");
+
+        var buffer = new ArraySegment<byte>(new byte[1024]);
+        while (!disposalTokenSource.IsCancellationRequested)
+        {
+            // Note that the received block might only be part of a larger message. If this applies in your scenario,
+            // check the received.EndOfMessage and consider buffering the blocks until that property is true.
+            // Or use a higher-level library such as SignalR.
+            var result = await socket.ReceiveAsync(buffer, disposalTokenSource.Token);
+            var receivedAsText = Encoding.UTF8.GetString(buffer.Array, 0, result.Count);
+            log += $"Received: {receivedAsText}\n";
+            Console.WriteLine("Message Received");
+            StateHasChanged();
+        }
+    }
+
+    public void Dispose()
+    {
+        disposalTokenSource.Cancel();
+        _ = socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Bye", CancellationToken.None);
+    }
+}
