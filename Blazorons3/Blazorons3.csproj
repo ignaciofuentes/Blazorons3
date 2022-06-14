@@ -13,5 +13,9 @@
 
   <ItemGroup>
     <None Remove="Microsoft.Extensions.Http" />
+    <None Remove="Models\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Models\" />
   </ItemGroup>
 </Project>

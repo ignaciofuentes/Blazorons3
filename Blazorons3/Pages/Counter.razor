@@ -1,4 +1,5 @@
 ﻿@page "/counter"
+@using Blazorons3.Models;
 
 <PageTitle>Counter</PageTitle>
 
@@ -10,17 +11,21 @@
 
 <button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
 
-<label>@myVar</label>
+<label>Branch: @myVar</label>
 
 @code {
     private int currentCount = 0;
-    private string myVar = "huh";
+    private string myVar = "branch name is";
 
     private void IncrementCount()
     {
         currentCount++;
-        myVar = System.Math.Pow(2, 2).ToString();
+        var b = new GitHubBranch();
+        b.Name = "test";
+        myVar = b.Name + currentCount;
 
     }
+
+
 }
 
