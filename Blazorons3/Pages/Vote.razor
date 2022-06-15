@@ -1,0 +1,43 @@
+﻿@page "/vote"
+
+<PageTitle>Vote</PageTitle>
+
+<h1>Vote</h1>
+<br />
+
+
+<h2>Docker vs. WebAssembly</h2>
+
+<div class="d-flex justify-content-center">
+    <div class="text-center">
+        <img style="height:200px; margin:40px" src="https://www.docker.com/wp-content/uploads/2022/03/vertical-logo-monochromatic.png" />
+        <br />
+        <button @onclick="vote1">Vote:@dockerVotes</button>
+    </div>
+    <div class="text-center my-auto">
+        <h2>VS</h2>
+    </div>
+    <div class="text-center">
+        <img style="height:200px; margin:40px" src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/WebAssembly_Logo.svg/1200px-WebAssembly_Logo.svg.png" />
+        <br />
+        <button @onclick="vote2">Vote:@waVotes</button>
+    </div>
+</div>
+
+@code {
+
+    private int dockerVotes = 0;
+    private int waVotes = 0;
+
+    private void vote1()
+    {
+        dockerVotes++;
+
+    }
+    private void vote2()
+    {
+        waVotes++;
+
+    }
+}
+
