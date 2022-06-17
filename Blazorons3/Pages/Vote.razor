@@ -1,10 +1,15 @@
 ﻿@page "/vote"
+@using System.Text.Json
+@using System.Text.Json.Serialization;
+@inject HttpClient Http;
+@using System.Net.WebSockets;
+@using System.Text;
+@using Blazorons3.Models;
 
 <PageTitle>Vote</PageTitle>
 
 <h1>Vote</h1>
 <br />
-
 
 <h2>Docker vs. WebAssembly</h2>
 
@@ -24,20 +29,83 @@
     </div>
 </div>
 
+<br />
+
+@if (socket.State == WebSocketState.Open)
+{
+    <pre>@log</pre>
+}
+
 @code {
 
     private int dockerVotes = 0;
     private int waVotes = 0;
 
-    private void vote1()
+    private async Task vote1()
     {
+        Console.WriteLine("SENDING");
+        var m = "Vote for Docker";
+        log += $"Sending: {m}\n";
+        var dataToSend = new ArraySegment<byte>(Encoding.UTF8.GetBytes(m));
+        await socket.SendAsync(dataToSend, WebSocketMessageType.Text, true, disposalTokenSource.Token);
         dockerVotes++;
 
     }
-    private void vote2()
+    private async Task vote2()
     {
-        waVotes++;
 
+        Console.WriteLine("SENDING");
+        var m = "Vote for Web Assembly!";
+        log += $"Sending: {m}\n";
+        var dataToSend = new ArraySegment<byte>(Encoding.UTF8.GetBytes(m));
+        await socket.SendAsync(dataToSend, WebSocketMessageType.Text, true, disposalTokenSource.Token);
+        waVotes++;
+    }
+
+    CancellationTokenSource disposalTokenSource = new CancellationTokenSource();
+    ClientWebSocket socket = new ClientWebSocket();
+    string message = "Hello, websocket!";
+    string log = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("Some content logged in Blazor App output window");
+
+        await socket.ConnectAsync(new Uri("wss://6cfwif7fa2.execute-api.us-east-1.amazonaws.com/production"), disposalTokenSource.Token);
+        _ = Receive();
+
+    }
+
+    async Task SendMessageAsync()
+    {
+        Console.WriteLine("SENDING");
+        log += $"Sending: {message}\n";
+        var dataToSend = new ArraySegment<byte>(Encoding.UTF8.GetBytes(message));
+        await socket.SendAsync(dataToSend, WebSocketMessageType.Text, true, disposalTokenSource.Token);
+    }
+
+    async Task Receive()
+    {
+        Console.WriteLine("Received Loop?!!");
+
+        var buffer = new ArraySegment<byte>(new byte[1024]);
+        while (!disposalTokenSource.IsCancellationRequested)
+        {
+            // Note that the received block might only be part of a larger message. If this applies in your scenario,
+            // check the received.EndOfMessage and consider buffering the blocks until that property is true.
+            // Or use a higher-level library such as SignalR.
+            var result = await socket.ReceiveAsync(buffer, disposalTokenSource.Token);
+            var receivedAsText = Encoding.UTF8.GetString(buffer.Array, 0, result.Count);
+            log += $"Received: {receivedAsText}\n";
+            Console.WriteLine("Message Received");
+            StateHasChanged();
+        }
+    }
+
+    public void Dispose()
+    {
+        disposalTokenSource.Cancel();
+        _ = socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Bye", CancellationToken.None);
     }
 }
 
