@@ -8,5 +8,4 @@ Amplify.yml is used to orchestrate CICD, CloudFront, S3 Bucket, and feature-bran
 
 You can see this site running live on
 
-https://main.d1am9enp8nn7x9.amplifyapp.com/
-
+https://blazor-on-s3.ignaciofuentes.com
